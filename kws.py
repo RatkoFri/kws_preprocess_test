@@ -24,6 +24,9 @@ from chisel4ml.preprocess.lmfe_layer import LMFELayer
 from chisel4ml.lbir.lbir_pb2 import FFTConfig
 from chisel4ml.lbir.lbir_pb2 import LMFEConfig
 
+from preprocess_full.fft_layer import FFTLayerFULL
+from preprocess_full.lmfe_layer import LMFELayerFULL
+
 from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
@@ -89,7 +92,6 @@ def audio_data(classes):
         return frames.reshape(32, 512)
 
     def get_frames_aug(x,y):
-        
         npads = (32 * 512) - x.shape[0]
         x_np = np.expand_dims(x, axis=0)
         x_np = x_np.astype(np.float32) / (2**15)
@@ -100,7 +102,7 @@ def audio_data(classes):
                 x_np = augment(x_np, sample_rate=16000)
 
         frames_x = np.pad(x_np, ((0,0),(0, npads))).reshape([32, 512])
-        return frames.reshape(32, 512)
+        return frames_x.reshape(32, 512)
 
     def train_gen():
         return map(
@@ -190,8 +192,8 @@ def ds_cnn(audio_data,dict_params):
     model = tf.keras.models.Sequential(
         [   
             tf.keras.layers.Input(shape=input_shape),
-            FFTLayer(FFTConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], win_fn=np.hamming(dict_params['fft_size']))),
-            LMFELayer(LMFEConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], num_mels=dict_params['num_mels'])),
+            FFTLayerFULL(FFTConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], win_fn=np.hamming(dict_params['fft_size']))),
+            LMFELayerFULL(LMFEConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], num_mels=dict_params['num_mels'])),
             ### First group 
             tf.keras.layers.Conv2D(filters, (10,4), strides=(2,2), padding='same', kernel_regularizer=regularizer),
             tf.keras.layers.BatchNormalization(),
@@ -289,7 +291,7 @@ def main():
         "fft_size": 512,
         "num_frames": 32,
         #LMFE
-        "num_mels": 40,
+        "num_mels": 20,
         # Training parameters
         "lr": 1e-3,
         "epochs": 20,
