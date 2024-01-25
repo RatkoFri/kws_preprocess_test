@@ -27,6 +27,9 @@ from chisel4ml.lbir.lbir_pb2 import LMFEConfig
 from preprocess_full.fft_layer import FFTLayerFULL
 from preprocess_full.lmfe_layer import LMFELayerFULL
 
+from preprocess_nodct.fft_layer import FFTLayerNODCT
+from preprocess_nodct.lmfe_layer import LMFELayerNODCT
+
 from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
