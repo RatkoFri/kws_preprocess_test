@@ -30,6 +30,10 @@ from preprocess_full.lmfe_layer import LMFELayerFULL
 from preprocess_nodct.fft_layer import FFTLayerNODCT
 from preprocess_nodct.lmfe_layer import LMFELayerNODCT
 
+
+from preprocess_log2.fft_layer import FFTLayerLOG2
+from preprocess_log2.lmfe_layer import LMFELayerLOG2
+
 from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
@@ -195,8 +199,8 @@ def ds_cnn(audio_data,dict_params):
     model = tf.keras.models.Sequential(
         [   
             tf.keras.layers.Input(shape=input_shape),
-            FFTLayerFULL(FFTConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], win_fn=np.hamming(dict_params['fft_size']))),
-            LMFELayerFULL(LMFEConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], num_mels=dict_params['num_mels'])),
+            FFTLayerLOG2(FFTConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], win_fn=np.hamming(dict_params['fft_size']))),
+            LMFELayerLOG2(LMFEConfig(fft_size=dict_params['fft_size'], num_frames=dict_params['num_frames'], num_mels=dict_params['num_mels'])),
             ### First group 
             tf.keras.layers.Conv2D(filters, (10,4), strides=(2,2), padding='same', kernel_regularizer=regularizer),
             tf.keras.layers.BatchNormalization(),
