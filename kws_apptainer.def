@@ -1,0 +1,83 @@
+Bootstrap: docker
+From: tensorflow/tensorflow:2.11.0-gpu
+IncludeCmd: yes
+# docker pull nvidia/cuda:12.0.1-cudnn8-devel-ubuntu18.04
+# docker pull nvidia/cuda:12.0.0-cudnn8-devel-ubuntu22.04
+
+%setup
+
+%files
+    ./chisel4ml/ /exec/
+    #../*.py /exec/
+
+%environment
+    export LC_ALL=C   
+    export PATH=/exec:${PATH}
+    export PATH="$PATH:/exec/chisel4ml/"
+
+%post
+    export LC_ALL=C.UTF-8   
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt -y update
+
+    # install sbt and sbt plugins
+    apt -y install default-jre
+    apt -y install apt-transport-https curl gnupg -yqq
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian /" |  tee /etc/apt/sources.list.d/sbt_old.list
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/scalasbt-release.gpg --import
+    chmod 644 /etc/apt/trusted.gpg.d/scalasbt-release.gpg
+    apt -y update
+    apt -y install sbt 
+    
+    # install ffmpeg 
+    apt -y install ffmpeg 
+    locale 
+    # enter the chisel4ml directory
+    cd /exec/chisel4ml
+    sbt assembly 
+
+    # unninstall python and install python3.10
+    apt -y remove python3
+    apt -y install python3
+    apt-get --reinstall install libc-bin
+
+
+    # install python pip 
+    apt -y remove python3-pip
+    apt -y install python3-pip
+    python3 -m pip install --upgrade pip
+
+    # install packages 
+    python3 -m pip install -ve .[dev]
+    python3 -m pip install pydub
+    python3 -m pip install audiomentations
+    # compile library 
+    alias python=python3
+    make 
+
+
+%runscript
+    echo "To be definied later"
+
+%test
+    python3 --version
+    #test -svv tests/test_audio.py::test_audio_classifier_no_preproc_no_bias_1st_layer
+
+
+%labels
+    Author      ratko (dot) pilipovic (at) fri (dot) uni (dash) lj (dot) si
+    Container   chisel4ml_apptainer 
+    Version     1.0
+    Description Container used for evaluating chisel4ml library for designing dnn accelerators 
+
+%help
+    Python container  for designing dnn accelerators :
+        scala: compilation
+        qkeras: dnn training 
+        sbt: compilation
+        ffmpeg: audio processing
+        pydub: audio processing
+        numpy: computation
+    
