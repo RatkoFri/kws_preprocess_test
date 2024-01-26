@@ -1,3 +1,6 @@
 venv/
 *.sif
 *__pycache__*
+*.log
+*.back
+*.csv
