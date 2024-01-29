@@ -290,8 +290,6 @@ def ds_cnn_v2(audio_data,dict_parms):
 
     reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=3, verbose=1)
 
-    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(MODEL_PATH + "/" + f'{model_name}.h5', monitor='val_loss', save_best_only=True)
-
     total_steps = TRAIN_SET_LENGTH/BATCH_SIZE*EPOCHS
     # If not batched
     #total_steps = len(train_set)/config['BATCH_SIZE']*config['EPOCHS']
@@ -416,8 +414,6 @@ def ds_cnn(audio_data,dict_parms):
     early_stop_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
 
     reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=3, verbose=1)
-
-    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(MODEL_PATH + "/" + f'{model_name}.h5', monitor='val_loss', save_best_only=True)
 
     total_steps = TRAIN_SET_LENGTH/BATCH_SIZE*EPOCHS
     # If not batched
