@@ -43,8 +43,6 @@ import csv
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 TFDS_DIR = "/home/ratkop/Documents/jure/quantized_speech_commands/vreca/tensorflow_datasets"
-MODEL_PATH = "/home/ratkop/Documents/jure/quantized_speech_commands/teacher_models/"
-TEACHER_MODEL = "teacher_model_final.h5"
 CSV_FILE = "/home/ratkop/Documents/jure/quantized_speech_commands/kws_preprocess_test/proposed-mel-gen.csv"
 
 
