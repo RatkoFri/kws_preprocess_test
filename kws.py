@@ -205,7 +205,7 @@ def audio_data():
         len(test_ds),
     ]
 
-def ds_cnn(audio_data,dict_parms):
+def ds_cnn_v2(audio_data,dict_parms):
     train_set = audio_data[0]  # noqa: F841
     val_set = audio_data[1]  # noqa: F841
     test_set = audio_data[2]
@@ -234,8 +234,8 @@ def ds_cnn(audio_data,dict_parms):
     model = tf.keras.models.Sequential(
         [   
             tf.keras.Input(shape=input_shape),
-            FFTLayerFULL(FFTConfig(fft_size=fft_size, num_frames=num_frames, win_fn=np.hamming(fft_size))),
-            LMFELayerFULL(LMFEConfig(fft_size=fft_size, num_frames=num_frames, num_mels=num_mels)),
+            FFTLayerLOG2(FFTConfig(fft_size=fft_size, num_frames=num_frames, win_fn=np.hamming(fft_size))),
+            LMFELayerLOG2(LMFEConfig(fft_size=fft_size, num_frames=num_frames, num_mels=num_mels)),
             ### First group 
             tf.keras.layers.Conv2D(filters, (10,4), strides=(2,2), padding='same', kernel_regularizer=regularizer),
             tf.keras.layers.BatchNormalization(),
@@ -288,7 +288,7 @@ def ds_cnn(audio_data,dict_parms):
 
 
     model_name = "ds-cnn_model"
-    early_stop_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=6)
+    early_stop_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
 
     reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=3, verbose=1)
 
@@ -313,6 +313,8 @@ def ds_cnn(audio_data,dict_parms):
 
     )
 
+    acc_list = []
+
     model.fit_generator(
         train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
         steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
@@ -330,7 +332,131 @@ def ds_cnn(audio_data,dict_parms):
     return [model,acc]
 
 
+def ds_cnn(audio_data,dict_parms):
+    train_set = audio_data[0]  # noqa: F841
+    val_set = audio_data[1]  # noqa: F841
+    test_set = audio_data[2]
+    label_names = audio_data[3]
+    TRAIN_SET_LENGTH = audio_data[4]  # noqa: F841
+    VAL_SET_LENGTH = audio_data[5]  # noqa: F841
+    #668/668 [==============================] - 108s 161ms/step - loss: 0.1546 - sparse_categorical_accuracy: 0.9596 - val_loss: 0.4045 - val_sparse_categorical_accuracy: 0.9033
+    #39/39 [==============================] - 6s 148ms/step - loss: 0.5615 - sparse_categorical_accuracy: 0.8448
+    input_shape = (32, 512)
+    print("Input shape:", input_shape)
+    print("label names:", label_names)
+    num_labels = len(label_names)
 
+    EPOCHS = dict_parms['epochs']  # noqa: F841
+    BATCH_SIZE = 128  # noqa: F841
+
+    filters = 64
+    weight_decay = 1e-4
+    regularizer = l2(weight_decay)
+    final_pool_size = (int(input_shape[0]/2.0), int(input_shape[1]/2.0))
+
+    fft_size = dict_parms['fft_size']
+    num_frames = dict_parms['num_frames']
+    num_mels = dict_parms['num_mels']
+
+    model = tf.keras.models.Sequential(
+        [   
+            tf.keras.Input(shape=input_shape),
+            FFTLayerNODCT(FFTConfig(fft_size=fft_size, num_frames=num_frames, win_fn=np.hamming(fft_size))),
+            LMFELayerNODCT(LMFEConfig(fft_size=fft_size, num_frames=num_frames, num_mels=num_mels)),
+            ### First group 
+            tf.keras.layers.Conv2D(filters, (10,4), strides=(2,2), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            ### Second group 
+            tf.keras.layers.DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            ### Third group 
+            tf.keras.layers.DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            ### Fourth group 
+            tf.keras.layers.DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            ### Fifth group 
+            tf.keras.layers.DepthwiseConv2D(depth_multiplier=1, kernel_size=(3,3), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(filters, (1,1), padding='same', kernel_regularizer=regularizer),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.ReLU(),
+
+            #tf.keras.layers.MaxPooling2D(),
+            tf.keras.layers.Dropout(0.50),
+            tf.keras.layers.GlobalAveragePooling2D(),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(512),
+            tf.keras.layers.Dense(num_labels),
+            tf.keras.layers.Softmax()
+        ],
+	name = "ds-cnn",
+    ) 
+
+    model.summary()
+
+
+
+    model_name = "ds-cnn_model"
+    early_stop_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+
+    reduce_LR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=3, verbose=1)
+
+    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(MODEL_PATH + "/" + f'{model_name}.h5', monitor='val_loss', save_best_only=True)
+
+    total_steps = TRAIN_SET_LENGTH/BATCH_SIZE*EPOCHS
+    # If not batched
+    #total_steps = len(train_set)/config['BATCH_SIZE']*config['EPOCHS']
+    # 5% of the steps
+    warmup_steps = int(0.05*total_steps)
+
+    lr_callback = WarmupCosineDecay(total_steps=total_steps, 
+                             warmup_steps=warmup_steps,
+                             hold=int(warmup_steps/2), 
+                             start_lr=0.0, 
+                             target_lr=1e-3)
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=dict_parms["lr"]),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=tf.keras.metrics.SparseCategoricalAccuracy(),
+
+    )
+
+    acc_list = []
+
+    model.fit_generator(
+        train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+        steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
+        validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
+            EPOCHS
+        ),  # noqa: E501
+        validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
+        epochs=EPOCHS,
+        verbose=True,
+        callbacks=[lr_callback, early_stop_callback],
+    )
+    
+    acc = model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
+    
+    return [model,acc]
 
 
 def main():
@@ -344,19 +470,29 @@ def main():
         "num_mels": 40,
         # Training parameters
         "lr": 0.5e-3,
-        "epochs": 20,
-        "acc": 0,
+        "epochs": 15,
+        "mean_acc": 0,
+        "std_acc": 0
     }
     
+
     #mel_list = [10,15,20,25,30,35,40]
     mel_list = [10,15,20,25,30,35,40]
+    
+    # nodct
     rep_dic = []
     for i in range(len(mel_list)):
         dict_parms["num_mels"] = mel_list[i]
         print("Mel: ", mel_list[i])
-        [model,acc]= ds_cnn(audio_data_files,dict_parms)
-        dict_parms["acc"] = acc[1]
-        print("Accuracy: ",acc)
+        acc_list = []
+        for j in range(2):
+            [model,acc]= ds_cnn(audio_data_files,dict_parms)
+            acc_list.append(acc[1])
+        acc_np = np.array(acc_list)
+        mean_acc = np.mean(acc_np, axis=0)
+        std_acc = np.std(acc_np, axis=0)
+        dict_parms["mean_acc"] = mean_acc
+        dict_parms["std_acc"] = std_acc
         keys = dict_parms.keys()
         rep_dic.append(dict_parms)
         with open(CSV_FILE, 'a', newline='') as output_file:
@@ -367,6 +503,28 @@ def main():
             rep_dic = []
 
 
+    # log2 
+    rep_dic = []
+    for i in range(len(mel_list)):
+        dict_parms["num_mels"] = mel_list[i]
+        print("Mel: ", mel_list[i])
+        acc_list = []
+        for j in range(2):
+            [model,acc]= ds_cnn_v2(audio_data_files,dict_parms)
+            acc_list.append(acc[1])
+        acc_np = np.array(acc_list)
+        mean_acc = np.mean(acc_np, axis=0)
+        std_acc = np.std(acc_np, axis=0)
+        dict_parms["mean_acc"] = mean_acc
+        dict_parms["std_acc"] = std_acc
+        keys = dict_parms.keys()
+        rep_dic.append(dict_parms)
+        with open(CSV_FILE, 'a', newline='') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            if(i==0):
+                dict_writer.writeheader()
+            dict_writer.writerows(rep_dic)
+            rep_dic = []
 
 
     # Writing the data to a CSV file
